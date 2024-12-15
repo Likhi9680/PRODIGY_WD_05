@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #87ceeb, #f0f8ff);
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        .weather {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Weather App</h1>
+    <form id="locationForm">
+        <input type="text" id="locationInput" placeholder="Enter location" required>
+        <button type="submit">Get Weather</button>
+    </form>
+    <button id="getCurrentLocation">Use Current Location</button>
+
+    <div id="weatherData" class="weather" style="display: none;"></div>
+
+    <script>
+        const apiKey = 'fdda07dc9589c0260708eed438e66fff'; // Replace with your API key from OpenWeatherMap
+
+        const weatherDataDiv = document.getElementById('weatherData');
+        const locationForm = document.getElementById('locationForm');
+        const locationInput = document.getElementById('locationInput');
+        const getCurrentLocationBtn = document.getElementById('getCurrentLocation');
+
+        // Function to fetch weather data
+        async function fetchWeatherData(location) {
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${location}&units=metric&appid=${apiKey}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Location not found');
+                }
+                const data = await response.json();
+                displayWeatherData(data);
+            } catch (error) {
+                weatherDataDiv.style.display = 'block';
+                weatherDataDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Function to display weather data
+        function displayWeatherData(data) {
+            weatherDataDiv.style.display = 'block';
+            weatherDataDiv.innerHTML = `
+                <h2>Weather in ${data.name}, ${data.sys.country}</h2>
+                <p>Temperature: ${data.main.temp}°C</p>
+                <p>Condition: ${data.weather[0].description}</p>
+                <p>Humidity: ${data.main.humidity}%</p>
+                <p>Wind Speed: ${data.wind.speed} m/s</p>
+            `;
+        }
+
+        // Event listener for form submission
+        locationForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const location = locationInput.value;
+            fetchWeatherData(location);
+        });
+
+        // Event listener for current location button
+        getCurrentLocationBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`;
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error('Unable to fetch location weather');
+                        }
+                        const data = await response.json();
+                        displayWeatherData(data);
+                    } catch (error) {
+                        weatherDataDiv.style.display = 'block';
+                        weatherDataDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                    }
+                });
+            } else {
+                weatherDataDiv.style.display = 'block';
+                weatherDataDiv.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
+            }
+        });
+    </script>
+</body>
+</html>
