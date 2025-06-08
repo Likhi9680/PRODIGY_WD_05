@@ -13,16 +13,41 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             background: linear-gradient(to bottom, #87ceeb, #f0f8ff);
             color: #333;
         }
+
         h1 {
             margin-bottom: 20px;
         }
-        form {
-            margin-bottom: 20px;
+
+        form, #getCurrentLocation {
+            margin-bottom: 15px;
         }
+
+        input[type="text"] {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 12px;
+            font-size: 16px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #0077cc;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #005fa3;
+        }
+
         .weather {
             text-align: center;
             padding: 20px;
@@ -30,6 +55,23 @@
             border-radius: 8px;
             background-color: #fff;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            width: 90%;
+        }
+
+        .weather img {
+            width: 80px;
+            height: 80px;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .weather {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -44,69 +86,94 @@
     <div id="weatherData" class="weather" style="display: none;"></div>
 
     <script>
-        const apiKey = 'fdda07dc9589c0260708eed438e66fff'; // Replace with your API key from OpenWeatherMap
+        const apiKey = '392ae1963ecc17dda18b5c9673876144';
 
         const weatherDataDiv = document.getElementById('weatherData');
         const locationForm = document.getElementById('locationForm');
         const locationInput = document.getElementById('locationInput');
         const getCurrentLocationBtn = document.getElementById('getCurrentLocation');
 
-        // Function to fetch weather data
+        // Fetch weather data by city name
         async function fetchWeatherData(location) {
+            if (!location || location.trim().length < 2) {
+                alert("Please enter a valid location.");
+                return;
+            }
+
             const url = `https://api.openweathermap.org/data/2.5/weather?q=${location}&units=metric&appid=${apiKey}`;
+            displayLoading();
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Location not found');
-                }
+                if (!response.ok) throw new Error('Location not found');
                 const data = await response.json();
                 displayWeatherData(data);
             } catch (error) {
-                weatherDataDiv.style.display = 'block';
-                weatherDataDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                displayError(error.message);
             }
         }
 
-        // Function to display weather data
+        // Fetch weather data by coordinates
+        async function fetchWeatherByCoordinates(lat, lon) {
+            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+            displayLoading();
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Unable to fetch weather for your location');
+                const data = await response.json();
+                displayWeatherData(data);
+            } catch (error) {
+                displayError(error.message);
+            }
+        }
+
+        // Display weather info
         function displayWeatherData(data) {
+            const iconCode = data.weather[0].icon;
+            const iconUrl = `http://openweathermap.org/img/wn/${iconCode}@2x.png`;
             weatherDataDiv.style.display = 'block';
             weatherDataDiv.innerHTML = `
                 <h2>Weather in ${data.name}, ${data.sys.country}</h2>
-                <p>Temperature: ${data.main.temp}°C</p>
-                <p>Condition: ${data.weather[0].description}</p>
-                <p>Humidity: ${data.main.humidity}%</p>
-                <p>Wind Speed: ${data.wind.speed} m/s</p>
+                <img src="${iconUrl}" alt="${data.weather[0].description}">
+                <p><strong>Temperature:</strong> ${data.main.temp}°C</p>
+                <p><strong>Condition:</strong> ${data.weather[0].description}</p>
+                <p><strong>Humidity:</strong> ${data.main.humidity}%</p>
+                <p><strong>Wind Speed:</strong> ${data.wind.speed} m/s</p>
             `;
         }
 
-        // Event listener for form submission
+        // Show loading message
+        function displayLoading() {
+            weatherDataDiv.style.display = 'block';
+            weatherDataDiv.innerHTML = '<p>Loading...</p>';
+        }
+
+        // Show error
+        function displayError(message) {
+            weatherDataDiv.style.display = 'block';
+            weatherDataDiv.innerHTML = `<p style="color: red;">Error: ${message}</p>`;
+        }
+
+        // Handle form submit
         locationForm.addEventListener('submit', (event) => {
             event.preventDefault();
             const location = locationInput.value;
             fetchWeatherData(location);
         });
 
-        // Event listener for current location button
+        // Handle geolocation
         getCurrentLocationBtn.addEventListener('click', () => {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    const { latitude, longitude } = position.coords;
-                    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`;
-                    try {
-                        const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error('Unable to fetch location weather');
-                        }
-                        const data = await response.json();
-                        displayWeatherData(data);
-                    } catch (error) {
-                        weatherDataDiv.style.display = 'block';
-                        weatherDataDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        fetchWeatherByCoordinates(latitude, longitude);
+                    },
+                    () => {
+                        displayError('Permission denied or unable to retrieve your location.');
                     }
-                });
+                );
             } else {
-                weatherDataDiv.style.display = 'block';
-                weatherDataDiv.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
+                displayError('Geolocation is not supported by your browser.');
             }
         });
     </script>
